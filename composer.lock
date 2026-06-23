@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "53b5d56b3b7e3cbac1713e68c8850f6c",
+    "content-hash": "069bcb3aabf6688377db2bc51e34ffdd",
     "packages": [
         {
             "name": "brick/math",
@@ -2024,6 +2024,61 @@
                 }
             ],
             "time": "2026-03-08T20:05:35+00:00"
+        },
+        {
+            "name": "mivodev/mikrotik-api-ros6",
+            "version": "dev-main",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/mivodev/mikrotik-api-ros6.git",
+                "reference": "ab5a5be7797770ed7fe7e2849304679b970ec95e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/mivodev/mikrotik-api-ros6/zipball/ab5a5be7797770ed7fe7e2849304679b970ec95e",
+                "reference": "ab5a5be7797770ed7fe7e2849304679b970ec95e",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^8.2"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Mivo\\MikrotikRos6\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mivodev",
+                    "email": "mivo@dev.dyzulk.com",
+                    "homepage": "https://github.com/mivodev",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Complete, universal PHP client for Mikrotik RouterOS v6 API (Socket Protocol Port 8728). Framework-agnostic, zero-dependency.",
+            "homepage": "https://github.com/mivodev/mikrotik-api-ros6",
+            "keywords": [
+                "Socket",
+                "api",
+                "hotspot",
+                "isp",
+                "mikrotik",
+                "pppoe",
+                "radius",
+                "ros6",
+                "routeros"
+            ],
+            "support": {
+                "issues": "https://github.com/mivodev/mikrotik-api-ros6/issues",
+                "source": "https://github.com/mivodev/mikrotik-api-ros6"
+            },
+            "time": "2026-05-27T23:24:31+00:00"
         },
         {
             "name": "monolog/monolog",
@@ -8400,9 +8455,11 @@
         }
     ],
     "aliases": [],
-    "minimum-stability": "stable",
-    "stability-flags": {},
-    "prefer-stable": true,
+    "minimum-stability": "dev",
+    "stability-flags": {
+        "mivodev/mikrotik-api-ros6": 20
+    },
+    "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
         "php": "^8.2"

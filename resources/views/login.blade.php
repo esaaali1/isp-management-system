@@ -10,6 +10,7 @@
     <style>
         body { font-family: 'Tajawal', sans-serif; }
     </style>
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
 <body class="relative min-h-screen flex items-center justify-center p-4 overflow-hidden" style="background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);">
 
@@ -51,57 +52,41 @@
     </div>
 
     <script>
-        // ========== التأكد من وجود وكلاء تجريبيين ==========
-        let agents = JSON.parse(localStorage.getItem('agents')) || [];
-        
-        // إذا لم يوجد وكلاء، نضيف وكلاء تجريبيين
-        if (agents.length === 0) {
-            agents = [
-                { name: "وكيل تجريبي", username: "essa1", password: "1998", start_date: "2025-01-01", end_date: "2025-12-31" },
-                { name: "وكيل تجريبي 2", username: "essa2", password: "1998", start_date: "2025-01-01", end_date: "2025-12-31" },
-                { name: "وكيل تجريبي 3", username: "essa7", password: "1998", start_date: "2025-01-01", end_date: "2025-12-31" }
-            ];
-            localStorage.setItem('agents', JSON.stringify(agents));
-            console.log("تم إضافة وكلاء تجريبيين إلى localStorage");
-        }
-        
-        // ========== معالج تسجيل الدخول ==========
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
 
-            console.log("محاولة دخول باسم:", username);
-            console.log("الوكلاء الموجودين:", agents);
-
-            // 1. التحقق من دخول الأدمن
+            // 1. التحقق من دخول الأدمن (ثابت)
             if (username === "admin@essa" && password === "1998") {
-                console.log("تم التوجيه إلى صفحة الأدمن");
                 window.location.href = "/admin";
                 return;
             }
             
-            // 2. التحقق من دخول الوكيل
-            const agent = agents.find(a => a.username === username && a.password === password);
-            console.log("الوكيل الذي تم العثور عليه:", agent);
-            
-            if (agent) {
-                // حفظ بيانات الوكيل الحالي
-                sessionStorage.setItem('currentAgent', JSON.stringify(agent));
-                
-                // التأكد من وجود قائمة عملاء لهذا الوكيل
-                const clientsKey = `clients_${agent.username}`;
-                if (!localStorage.getItem(clientsKey)) {
-                    localStorage.setItem(clientsKey, JSON.stringify([]));
+            // 2. التحقق من دخول الوكيل (عن طريق API)
+            fetch('/api/agent-login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                },
+                body: JSON.stringify({ username: username, password: password })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // حفظ بيانات الوكيل في sessionStorage
+                    sessionStorage.setItem('currentAgent', JSON.stringify(data.agent));
+                    window.location.href = "/agent/dashboard";
+                } else {
+                    alert("اسم المستخدم أو كلمة المرور غير صحيحة");
                 }
-                
-                console.log("تم التوجيه إلى صفحة الوكيل: /agent/dashboard");
-                window.location.href = "/agent/dashboard";
-            } else {
-                console.log("لم يتم العثور على الوكيل");
-                alert("اسم المستخدم أو كلمة المرور غير صحيحة");
-            }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert("حدث خطأ في الاتصال بالخادم");
+            });
         });
     </script>
 

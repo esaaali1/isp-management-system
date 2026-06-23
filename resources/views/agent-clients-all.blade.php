@@ -13,106 +13,142 @@
 </head>
 <body class="bg-gray-100 min-h-screen">
 
-    <div class="bg-white shadow-lg p-4 flex items-center justify-between sticky top-0 z-10">
+    <div class="bg-white shadow-lg p-3 flex items-center justify-between sticky top-0 z-10">
         <div>
-            <h1 class="text-xl font-bold text-gray-800">جميع المشتركين</h1>
-            <p class="text-gray-500 text-xs mt-1" id="agentNameDisplay"></p>
+            <h1 class="text-lg font-bold text-gray-800">جميع المشتركين</h1>
+            <p class="text-gray-500 text-xs mt-0.5">{{ $agent->name ?? '' }}</p>
         </div>
         <a href="/agent/dashboard" class="text-blue-600 hover:text-blue-700 text-sm">
             <i class="fas fa-arrow-right ml-1"></i> العودة
         </a>
     </div>
 
-    <div class="p-4 pb-28">
-        <div id="clientsList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+    <!-- عرض رسائل النجاح أو الخطأ -->
+    @if (session('success'))
+        <div class="mx-3 mt-3 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
+            {{ session('success') }}
         </div>
-        <div id="emptyMessage" class="text-center py-12 hidden">
+    @endif
+
+    @if (session('error'))
+        <div class="mx-3 mt-3 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {{ session('error') }}
+        </div>
+    @endif
+
+    @if ($errors->any())
+        <div class="mx-3 mt-3 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <div class="p-3 pb-28">
+        <div id="clientsList" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2">
+            @foreach($clients as $client)
+            <div onclick="window.location.href='/agent/client/{{ $client->id }}'" 
+                 class="bg-white rounded-lg shadow p-2 cursor-pointer hover:shadow-md transition-all">
+                <div class="text-center">
+                    <div class="flex justify-center mb-1">
+                        @php
+                            $today = new DateTime();
+                            $end = new DateTime($client->end_date);
+                            $diff = $today->diff($end)->days;
+                            $remaining = $today <= $end ? $diff : -$diff;
+                        @endphp
+                        <div class="px-1.5 py-0.5 rounded-full text-xs font-semibold 
+                            @if($remaining < 0) bg-red-100 text-red-600
+                            @elseif($remaining < 7) bg-orange-100 text-orange-600
+                            @else bg-green-100 text-green-600 @endif">
+                            {{ $remaining < 0 ? 'منتهي' : $remaining . ' ي' }}
+                        </div>
+                    </div>
+                    <h3 class="text-base font-bold text-gray-800 truncate">{{ $client->fullname }}</h3>
+                    <p class="text-gray-500 text-xs truncate">{{ $client->username }}</p>
+                    <p class="text-xs mt-1 px-1 py-0.5 rounded-full inline-block 
+                        @if($client->package == 'Economy') bg-green-100 text-green-600
+                        @elseif($client->package == 'Standard') bg-blue-100 text-blue-600
+                        @else bg-purple-100 text-purple-600 @endif">
+                        {{ $client->package }}
+                    </p>
+                    <div class="text-xs text-gray-400 mt-1 pt-1 border-t">
+                        <i class="fas fa-calendar-plus ml-1"></i> {{ \Carbon\Carbon::parse($client->end_date)->format('Y/m/d') }}
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        
+        @if($clients->isEmpty())
+        <div id="emptyMessage" class="text-center py-12">
             <i class="fas fa-users text-gray-300 text-5xl mb-2"></i>
             <p class="text-gray-400">لا يوجد مشتركين بعد</p>
         </div>
+        @endif
     </div>
 
-    <button onclick="window.location.href='/agent/dashboard'" 
-            class="fixed bottom-6 left-6 w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl shadow-xl flex items-center justify-center text-2xl transition-all">
+    <!-- زر + (يفتح النموذج) -->
+    <button onclick="showAddClientModal()" 
+            class="fixed bottom-6 left-6 w-12 h-12 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-xl flex items-center justify-center text-xl transition-all z-20">
         <i class="fas fa-plus"></i>
     </button>
 
-    <script>
-        let currentAgent = JSON.parse(sessionStorage.getItem('currentAgent'));
-        if (!currentAgent) window.location.href = '/login';
-        
-        document.getElementById('agentNameDisplay').innerText = currentAgent.name || currentAgent.username;
-        
-        let clients = JSON.parse(localStorage.getItem(`clients_${currentAgent.username}`)) || [];
-        
-        const packageColors = {
-            'Economy': 'bg-green-100 text-green-600',
-            'Standard': 'bg-blue-100 text-blue-600',
-            'Business': 'bg-purple-100 text-purple-600'
-        };
-
-        function calculateDaysRemaining(endDate) {
-            const today = new Date(); today.setHours(0,0,0,0);
-            const end = new Date(endDate); end.setHours(0,0,0,0);
-            return Math.ceil((end - today) / (1000*60*60*24));
-        }
-
-        function formatDate(dateString) {
-            try { 
-                const d = new Date(dateString);
-                return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
-            }
-            catch(e) { return dateString; }
-        }
-
-        function renderClients() {
-            const container = document.getElementById('clientsList');
-            const emptyMessage = document.getElementById('emptyMessage');
+    <!-- نموذج إضافة مشترك (Modal) -->
+    <div id="addClientModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6">
+            <div class="flex justify-between items-center mb-5">
+                <h2 class="text-2xl font-bold text-gray-800">إضافة مشترك جديد</h2>
+                <button onclick="hideAddClientModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+            </div>
             
-            if (clients.length === 0) {
-                container.innerHTML = '';
-                emptyMessage.classList.remove('hidden');
-                return;
-            }
-            emptyMessage.classList.add('hidden');
-            container.innerHTML = '';
-            
-            clients.forEach((client, index) => {
-                const daysRemaining = calculateDaysRemaining(client.end_date);
-                let daysColor = 'text-green-600', daysBg = 'bg-green-100';
-                if (daysRemaining < 0) { daysColor = 'text-red-600'; daysBg = 'bg-red-100'; }
-                else if (daysRemaining < 7) { daysColor = 'text-orange-600'; daysBg = 'bg-orange-100'; }
+            <form action="{{ route('clients.store') }}" method="POST">
+                @csrf
+                <input type="hidden" name="agent_id" value="{{ $agent->id ?? '' }}">
                 
-                const card = document.createElement('div');
-                card.className = 'bg-white rounded-xl shadow-md p-3 cursor-pointer hover:shadow-lg transition-all';
-                card.onclick = () => { window.location.href = `/agent/client/${index}`; };
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-2">
-                        <div class="flex-1">
-                            <h3 class="text-base font-bold text-gray-800 truncate">${escapeHtml(client.fullname || client.username)}</h3>
-                            <p class="text-gray-500 text-xs mt-0.5">${escapeHtml(client.username)}</p>
-                            <p class="text-xs mt-1 px-1.5 py-0.5 rounded-full inline-block ${packageColors[client.package] || 'bg-gray-100'}">${client.package || 'غير محدد'}</p>
-                        </div>
-                        <div class="${daysBg} ${daysColor} px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap mr-2">
-                            ${daysRemaining < 0 ? 'منتهي' : daysRemaining + ' يوم'}
-                        </div>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">اسم المشترك</label>
+                        <input type="text" name="fullname" class="w-full p-3 border rounded-xl" required>
                     </div>
-                    <div class="flex justify-between text-xs text-gray-400 mt-2 pt-2 border-t">
-                        <span><i class="fas fa-calendar-plus ml-1"></i> حتى: ${formatDate(client.end_date)}</span>
+
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">اسم المستخدم (PPPoE)</label>
+                        <input type="text" name="username" class="w-full p-3 border rounded-xl" required>
                     </div>
-                `;
-                container.appendChild(card);
-            });
-        }
+                    
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">كلمة المرور</label>
+                        <input type="text" name="password" class="w-full p-3 border rounded-xl" required>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-gray-700 font-medium mb-2">نوع الباقة</label>
+                        <select name="package" class="w-full p-3 border rounded-xl" required>
+                            <option value="Economy">Economy</option>
+                            <option value="Standard">Standard</option>
+                            <option value="Business">Business</option>
+                        </select>
+                    </div>
+                </div>
 
-        function escapeHtml(text) {
-            if (!text) return '';
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+                <div class="flex gap-3 mt-8">
+                    <button type="button" onclick="hideAddClientModal()" class="flex-1 py-3 border rounded-xl">إلغاء</button>
+                    <button type="submit" class="flex-1 py-3 bg-blue-600 text-white rounded-xl">إضافة المشترك</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
-        renderClients();
+    <script>
+        function showAddClientModal() {
+            document.getElementById('addClientModal').classList.remove('hidden');
+        }
+        function hideAddClientModal() {
+            document.getElementById('addClientModal').classList.add('hidden');
+        }
     </script>
 
 </body>
