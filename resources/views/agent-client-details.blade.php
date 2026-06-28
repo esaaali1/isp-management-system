@@ -14,6 +14,7 @@
 <body class="bg-gray-100 min-h-screen">
 
     <div class="container mx-auto p-4 max-w-2xl">
+        <!-- Header -->
         <div class="bg-white shadow-lg rounded-2xl p-5 mb-6">
             <div class="flex justify-between items-center">
                 <div>
@@ -26,23 +27,28 @@
             </div>
         </div>
 
+        <!-- بطاقة التفاصيل -->
         <div class="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div class="p-6 space-y-5">
+                <!-- اسم المشترك -->
                 <div class="flex justify-between items-center pb-3 border-b">
                     <span class="text-gray-600 font-medium"><i class="fas fa-user-circle ml-2 w-6"></i>اسم المشترك</span>
                     <span class="text-gray-800 font-semibold">{{ $client->fullname }}</span>
                 </div>
 
+                <!-- اسم المستخدم -->
                 <div class="flex justify-between items-center pb-3 border-b">
                     <span class="text-gray-600 font-medium"><i class="fas fa-user ml-2 w-6"></i>اسم المستخدم</span>
                     <span class="text-gray-800 font-semibold">{{ $client->username }}</span>
                 </div>
                 
+                <!-- كلمة المرور -->
                 <div class="flex justify-between items-center pb-3 border-b">
                     <span class="text-gray-600 font-medium"><i class="fas fa-lock ml-2 w-6"></i>كلمة المرور</span>
                     <span class="text-gray-800 font-mono bg-gray-100 px-3 py-1 rounded">{{ $client->password }}</span>
                 </div>
                 
+                <!-- نوع الباقة -->
                 <div class="flex justify-between items-center pb-3 border-b">
                     <span class="text-gray-600 font-medium"><i class="fas fa-tag ml-2 w-6"></i>نوع الباقة</span>
                     <span class="px-3 py-1 rounded-full text-sm font-semibold 
@@ -53,16 +59,33 @@
                     </span>
                 </div>
                 
+                <!-- تاريخ الإنشاء -->
                 <div class="flex justify-between items-center pb-3 border-b">
                     <span class="text-gray-600 font-medium"><i class="fas fa-calendar-plus ml-2 w-6"></i>تاريخ الإنشاء</span>
                     <span class="text-gray-800">{{ \Carbon\Carbon::parse($client->start_date)->format('Y/m/d') }}</span>
                 </div>
                 
+                <!-- تاريخ الانتهاء -->
                 <div class="flex justify-between items-center pb-3 border-b">
                     <span class="text-gray-600 font-medium"><i class="fas fa-calendar-times ml-2 w-6"></i>تاريخ الانتهاء</span>
                     <span class="text-gray-800 font-semibold">{{ \Carbon\Carbon::parse($client->end_date)->format('Y/m/d') }}</span>
                 </div>
+
+                <!-- عنوان IP الدخول (الحقل الجديد) -->
+                <div class="flex justify-between items-center pb-3 border-b">
+                    <span class="text-gray-600 font-medium"><i class="fas fa-network-wired ml-2 w-6"></i>عنوان IP الدخول</span>
+                    @if($clientIp)
+                        <a href="http://{{ $clientIp }}" target="_blank" 
+                           class="text-blue-600 hover:text-blue-800 font-mono bg-gray-100 px-3 py-1 rounded cursor-pointer transition hover:bg-gray-200">
+                            {{ $clientIp }}
+                            <i class="fas fa-external-link-alt mr-1 text-xs"></i>
+                        </a>
+                    @else
+                        <span class="text-gray-400 font-medium">غير متصل</span>
+                    @endif
+                </div>
                 
+                <!-- الأيام المتبقية -->
                 <div class="flex justify-between items-center pb-3 border-b">
                     <span class="text-gray-600 font-medium"><i class="fas fa-hourglass-half ml-2 w-6"></i>الأيام المتبقية</span>
                     <span class="text-lg font-bold">
@@ -81,6 +104,7 @@
                 </div>
             </div>
             
+            <!-- الأزرار -->
             <div class="p-6 bg-gray-50 grid grid-cols-2 gap-3">
                 <a href="/agent/client/{{ $client->id }}/renew" 
                    class="bg-green-600 hover:bg-green-700 text-white font-semibold py-3 rounded-xl transition text-center">

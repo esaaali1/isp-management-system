@@ -13,11 +13,14 @@ class Agent extends Model
         'name',
         'username',
         'password',
+        'mikrotik_host',
+        'mikrotik_user',
+        'mikrotik_pass',
+        'mikrotik_port',
         'start_date',
-        'end_date'
+        'end_date',
     ];
 
-    // علاقة: الوكيل لديه العديد من المشتركين
     public function clients()
     {
         return $this->hasMany(Client::class);

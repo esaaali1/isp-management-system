@@ -8,50 +8,116 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Tajawal', sans-serif; }
+        body { 
+            font-family: 'Tajawal', sans-serif; 
+            background-color: #f4f7fc;
+            background-image: radial-gradient(circle at 10% 20%, rgb(226, 240, 254) 0%, rgb(255, 255, 255) 90%);
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 1);
+            box-shadow: 0 20px 50px rgba(37, 99, 235, 0.08), 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .loader-ring {
+            border-color: #eff6ff; /* blue-50 */
+            border-top-color: #2563eb; /* blue-600 */
+            animation: spin 2.5s linear infinite;
+        }
+        @keyframes spin { 
+            0% { transform: rotate(0deg); } 
+            100% { transform: rotate(360deg); } 
+        }
     </style>
     <meta name="csrf-token" content="{{ csrf_token() }}">
 </head>
-<body class="relative min-h-screen flex items-center justify-center p-4 overflow-hidden" style="background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);">
+<body class="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
 
-    <div class="absolute -top-40 -right-40 w-96 h-96 bg-blue-500 rounded-full opacity-20 blur-3xl"></div>
-    <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-indigo-500 rounded-full opacity-20 blur-3xl"></div>
+    <div class="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-blue-100 rounded-full opacity-40 blur-3xl -z-10"></div>
+    <div class="absolute bottom-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-100 rounded-full opacity-40 blur-3xl -z-10"></div>
 
-    <div class="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 backdrop-blur-sm">
-        <div class="text-center mb-8">
-            <h1 class="text-3xl font-bold text-gray-800">تسجيل دخول</h1>
-            <p class="text-gray-500 mt-2">مرحباً بك مرة أخرى! يرجى تسجيل الدخول<br>لمتابعة حسابك</p>
+    <div class="glass-card rounded-[30px] w-full max-w-[420px] p-8 md:p-10 relative z-10 border border-white">
+        
+        <div class="flex justify-center mb-6 relative">
+            <div class="relative w-[100px] h-[100px] flex items-center justify-center">
+                <div class="absolute inset-0 rounded-full border-[6px] loader-ring"></div>
+                <div class="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center shadow-lg shadow-blue-200 z-10">
+                    <i class="fas fa-lock text-white text-xl"></i>
+                </div>
+                <div class="absolute top-1 right-2 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
+                <div class="absolute bottom-1 left-2 w-2 h-2 bg-blue-400 rounded-full"></div>
+                <div class="absolute top-10 -left-3 w-1.5 h-1.5 bg-blue-300 rounded-full"></div>
+                <div class="absolute top-10 -right-3 w-1 h-1 bg-blue-400 rounded-full"></div>
+            </div>
         </div>
 
-        <form id="loginForm" class="space-y-6">
+        <div class="text-center mb-8">
+            <h1 class="text-[28px] font-bold text-gray-900 mb-2.5">تسجيل دخول</h1>
+            <p class="text-gray-500 text-[13px] font-medium leading-relaxed">مرحباً بك مرة أخرى! يرجى تسجيل الدخول<br>لمتابعة حسابك</p>
+        </div>
+
+        <form id="loginForm" class="space-y-5">
             <div>
-                <label class="block text-gray-700 font-medium mb-2">اسم المستخدم</label>
+                <div class="flex items-center gap-2 mb-2">
+                    <i class="fas fa-user text-blue-600 text-sm"></i>
+                    <label class="block text-gray-800 font-bold text-sm">اسم المستخدم</label>
+                </div>
                 <div class="relative">
-                    <i class="fas fa-user absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg"></i>
+                    <i class="fas fa-user absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
                     <input type="text" id="username" 
-                           class="w-full pr-12 pl-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-lg"
+                           class="w-full pr-11 pl-4 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 text-sm font-medium transition-all text-gray-700 placeholder-gray-400"
                            placeholder="أدخل اسم المستخدم" required>
                 </div>
             </div>
 
             <div>
-                <label class="block text-gray-700 font-medium mb-2">كلمة المرور</label>
+                <div class="flex items-center gap-2 mb-2">
+                    <i class="fas fa-lock text-blue-600 text-sm"></i>
+                    <label class="block text-gray-800 font-bold text-sm">كلمة المرور</label>
+                </div>
                 <div class="relative">
-                    <i class="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-lg"></i>
+                    <i class="fas fa-lock absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 text-sm"></i>
                     <input type="password" id="password" 
-                           class="w-full pr-12 pl-4 py-3 border border-gray-300 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-lg"
+                           class="w-full pr-11 pl-12 py-3.5 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-50 text-sm font-medium transition-all text-gray-700 placeholder-gray-400"
                            placeholder="أدخل كلمة المرور" required>
+                    
+                    <button type="button" onclick="togglePassword()" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none transition-colors">
+                        <i class="fas fa-eye" id="eyeIcon"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between pt-1 pb-1">
+                <div class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="remember" class="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 cursor-pointer">
+                    <label for="remember" class="text-sm text-gray-500 font-medium cursor-pointer">تذكرني</label>
                 </div>
             </div>
 
             <button type="submit"
-                    class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-2xl text-lg transition">
-                تسجيل دخول
+                    class="w-full bg-[#1d4ed8] hover:bg-blue-800 active:transform active:scale-[0.98] text-white font-bold py-4 rounded-2xl text-[15px] transition-all shadow-lg shadow-blue-200 flex justify-center items-center gap-2">
+                <span>تسجيل دخول</span>
+                <i class="fas fa-sign-in-alt rtl:rotate-180 text-sm"></i>
             </button>
         </form>
     </div>
 
     <script>
+        // دالة لإظهار وإخفاء كلمة المرور عند الضغط على أيقونة العين
+        function togglePassword() {
+            const passwordInput = document.getElementById('password');
+            const eyeIcon = document.getElementById('eyeIcon');
+            
+            if (passwordInput.type === 'password') {
+                passwordInput.type = 'text';
+                eyeIcon.classList.remove('fa-eye');
+                eyeIcon.classList.add('fa-eye-slash');
+            } else {
+                passwordInput.type = 'password';
+                eyeIcon.classList.remove('fa-eye-slash');
+                eyeIcon.classList.add('fa-eye');
+            }
+        }
+
+        // --- كود الـ JavaScript الخاص بك دون أي تعديل ---
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
             
@@ -89,6 +155,5 @@
             });
         });
     </script>
-
 </body>
 </html>

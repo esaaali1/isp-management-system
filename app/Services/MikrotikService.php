@@ -5,42 +5,24 @@ namespace App\Services;
 class MikrotikService
 {
     protected $socket;
-    protected $host;
-    protected $port;
-    protected $user;
-    protected $pass;
 
-    public function __construct()
-    {
-        $this->host = config('mikrotik.host');
-        $this->port = config('mikrotik.port');
-        $this->user = config('mikrotik.user');
-        $this->pass = config('mikrotik.pass');
-        $this->connect();
-    }
+    // ===================== دوال الاتصال الأساسية =====================
 
-    /**
-     * فتح الاتصال بالمايكروتيك
-     */
-    private function connect()
+    public function connect($host, $user, $pass, $port = 8728)
     {
-        $this->socket = @fsockopen($this->host, $this->port, $errno, $errstr, 10);
+        $this->socket = @fsockopen($host, $port, $errno, $errstr, 10);
         if (!$this->socket) {
             throw new \Exception("فشل الاتصال بالمايكروتيك: $errstr ($errno)");
         }
 
-        // تسجيل الدخول
-        $this->sendSentence(['/login', "=name={$this->user}", "=password={$this->pass}"]);
+        $this->sendSentence(['/login', "=name=$user", "=password=$pass"]);
         $reply = $this->readReply();
 
         if (!in_array('!done', $reply)) {
-            throw new \Exception("فشل تسجيل الدخول: " . implode(' | ', $reply));
+            throw new \Exception("فشل تسجيل الدخول إلى المايكروتيك");
         }
     }
 
-    /**
-     * إرسال كلمة واحدة
-     */
     private function sendWord($word)
     {
         $len = strlen($word);
@@ -58,9 +40,6 @@ class MikrotikService
         fwrite($this->socket, $word);
     }
 
-    /**
-     * قراءة كلمة واحدة
-     */
     private function readWord()
     {
         $c = fread($this->socket, 1);
@@ -90,9 +69,6 @@ class MikrotikService
         return ($data === false) ? false : $data;
     }
 
-    /**
-     * إرسال جملة كاملة
-     */
     private function sendSentence($words)
     {
         foreach ($words as $word) {
@@ -101,9 +77,6 @@ class MikrotikService
         $this->sendWord('');
     }
 
-    /**
-     * قراءة الرد بالكامل
-     */
     private function readReply()
     {
         $reply = [];
@@ -124,9 +97,6 @@ class MikrotikService
         return $reply;
     }
 
-    /**
-     * تنفيذ أمر عام
-     */
     private function execCommand($command, $params = [])
     {
         $words = [$command];
@@ -149,11 +119,15 @@ class MikrotikService
         }
     }
 
-    /**
-     * إنشاء مستخدم PPPoE جديد (يستخدم profile=default)
-     */
-    public function createPppoeUser($username, $password, $profile = 'default')
+    public function createPppoeUser($username, $password, $profile, $agent)
     {
+        $this->connect(
+            $agent->mikrotik_host,
+            $agent->mikrotik_user,
+            $agent->mikrotik_pass,
+            $agent->mikrotik_port
+        );
+
         return $this->execCommand('/ppp/secret/add', [
             'name' => $username,
             'password' => $password,
@@ -162,47 +136,122 @@ class MikrotikService
         ]);
     }
 
-    public function disablePppoeUser($username)
+    public function disablePppoeUser($username, $agent)
     {
+        $this->connect(
+            $agent->mikrotik_host,
+            $agent->mikrotik_user,
+            $agent->mikrotik_pass,
+            $agent->mikrotik_port
+        );
+
         return $this->execCommand('/ppp/secret/set', [
             '.id' => $username,
             'disabled' => 'yes',
         ]);
     }
 
-    public function enablePppoeUser($username)
+    public function enablePppoeUser($username, $agent)
     {
+        $this->connect(
+            $agent->mikrotik_host,
+            $agent->mikrotik_user,
+            $agent->mikrotik_pass,
+            $agent->mikrotik_port
+        );
+
         return $this->execCommand('/ppp/secret/set', [
             '.id' => $username,
             'disabled' => 'no',
         ]);
     }
 
-    public function deletePppoeUser($username)
+    public function deletePppoeUser($username, $agent)
     {
+        $this->connect(
+            $agent->mikrotik_host,
+            $agent->mikrotik_user,
+            $agent->mikrotik_pass,
+            $agent->mikrotik_port
+        );
+
         return $this->execCommand('/ppp/secret/remove', [
             '.id' => $username,
         ]);
     }
 
-    public function changePppoePassword($username, $newPassword)
+    public function changePppoePassword($username, $newPassword, $agent)
     {
+        $this->connect(
+            $agent->mikrotik_host,
+            $agent->mikrotik_user,
+            $agent->mikrotik_pass,
+            $agent->mikrotik_port
+        );
+
         return $this->execCommand('/ppp/secret/set', [
             '.id' => $username,
             'password' => $newPassword,
         ]);
     }
 
-    public function changePppoeProfile($username, $profile)
+    public function changePppoeProfile($username, $profile, $agent)
     {
+        $this->connect(
+            $agent->mikrotik_host,
+            $agent->mikrotik_user,
+            $agent->mikrotik_pass,
+            $agent->mikrotik_port
+        );
+
         return $this->execCommand('/ppp/secret/set', [
             '.id' => $username,
             'profile' => $profile,
         ]);
     }
 
-    public function getActiveUsers()
+    public function getActiveUsers($agent)
     {
+        $this->connect(
+            $agent->mikrotik_host,
+            $agent->mikrotik_user,
+            $agent->mikrotik_pass,
+            $agent->mikrotik_port
+        );
+
         return $this->execCommand('/ppp/active/print');
+    }
+
+    /**
+     * الحصول على عنوان IP الخاص بمشترك معين (إذا كان متصلاً)
+     */
+    public function getClientIP($username, $agent)
+    {
+        // الاتصال بالمايكروتيك الخاص بالوكيل
+        $this->connect(
+            $agent->mikrotik_host,
+            $agent->mikrotik_user,
+            $agent->mikrotik_pass,
+            $agent->mikrotik_port
+        );
+
+        // جلب قائمة المتصلين
+        $response = $this->execCommand('/ppp/active/print');
+
+        // البحث عن المستخدم في القائمة
+        $ip = null;
+        $currentUser = null;
+
+        foreach ($response as $line) {
+            if (strpos($line, '=name=') === 0) {
+                $currentUser = substr($line, 6);
+            }
+            if ($currentUser === $username && strpos($line, '=address=') === 0) {
+                $ip = substr($line, 9);
+                break;
+            }
+        }
+
+        return $ip; // إذا كان null فهذا يعني أنه غير متصل
     }
 }

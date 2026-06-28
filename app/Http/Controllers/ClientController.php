@@ -40,14 +40,23 @@ class ClientController extends Controller
                 'package' => 'required|in:Economy,Standard,Business',
             ]);
 
+            // جلب بيانات الوكيل
+            $agent = Agent::findOrFail($request->agent_id);
+            
+            // التأكد من أن الوكيل لديه بيانات مايكروتيك
+            if (empty($agent->mikrotik_host) || empty($agent->mikrotik_user) || empty($agent->mikrotik_pass)) {
+                return redirect()->back()->with('error', 'هذا الوكيل ليس لديه بيانات مايكروتيك مكتملة.')->withInput();
+            }
+
             Log::info('تم التحقق بنجاح');
 
-            // إنشاء المستخدم في المايكروتيك (استخدام default)
+            // إنشاء المستخدم في مايكروتيك الوكيل
             try {
                 $result = $mikrotik->createPppoeUser(
                     $request->username,
                     $request->password,
-                    'default'  // استخدام default بدلاً من package
+                    $request->package,
+                    $agent  // تمرير بيانات الوكيل
                 );
                 
                 Log::info('نتيجة المايكروتيك:', $result);
@@ -91,10 +100,20 @@ class ClientController extends Controller
         }
     }
 
-    public function show($id)
+    public function show($id, MikrotikService $mikrotik)
     {
         $client = Client::findOrFail($id);
-        return view('agent-client-details', compact('client'));
+        $agent = Agent::findOrFail($client->agent_id);
+        
+        // جلب IP المتصل (إذا كان موجوداً)
+        $clientIp = null;
+        try {
+            $clientIp = $mikrotik->getClientIP($client->username, $agent);
+        } catch (\Exception $e) {
+            // إذا فشل الاتصال بالمايكروتيك، نترك الـ IP فارغاً
+        }
+
+        return view('agent-client-details', compact('client', 'clientIp'));
     }
 
     public function update(Request $request, $id, MikrotikService $mikrotik)
@@ -103,7 +122,7 @@ class ClientController extends Controller
         
         if ($request->has('password') && $request->password != $client->password) {
             try {
-                $mikrotik->changePppoePassword($client->username, $request->password);
+                $mikrotik->changePppoePassword($client->username, $request->password, $client->agent);
             } catch (\Exception $e) {
                 return redirect()->back()->with('error', 'فشل تغيير كلمة المرور في المايكروتيك');
             }
@@ -111,7 +130,7 @@ class ClientController extends Controller
         
         if ($request->has('package') && $request->package != $client->package) {
             try {
-                $mikrotik->changePppoeProfile($client->username, $request->package);
+                $mikrotik->changePppoeProfile($client->username, $request->package, $client->agent);
             } catch (\Exception $e) {
                 return redirect()->back()->with('error', 'فشل تغيير الباقة في المايكروتيك');
             }
@@ -129,9 +148,10 @@ class ClientController extends Controller
     public function destroy($id, MikrotikService $mikrotik)
     {
         $client = Client::findOrFail($id);
+        $agent = Agent::findOrFail($client->agent_id);
         
         try {
-            $mikrotik->deletePppoeUser($client->username);
+            $mikrotik->deletePppoeUser($client->username, $agent);
         } catch (\Exception $e) {
             // تجاهل
         }
@@ -143,11 +163,13 @@ class ClientController extends Controller
     public function renew($id, MikrotikService $mikrotik)
     {
         $client = Client::findOrFail($id);
+        $agent = Agent::findOrFail($client->agent_id);
+        
         $client->end_date = Carbon::parse($client->end_date)->addDays(30);
         $client->save();
         
         try {
-            $mikrotik->enablePppoeUser($client->username);
+            $mikrotik->enablePppoeUser($client->username, $agent);
         } catch (\Exception $e) {
             // تجاهل
         }
