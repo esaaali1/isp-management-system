@@ -6,8 +6,6 @@ class MikrotikService
 {
     protected $socket;
 
-    // ===================== دوال الاتصال الأساسية =====================
-
     public function connect($host, $user, $pass, $port = 8728)
     {
         $this->socket = @fsockopen($host, $port, $errno, $errstr, 10);
@@ -107,8 +105,6 @@ class MikrotikService
         return $this->readReply();
     }
 
-    // ===================== الوظائف العامة =====================
-
     public function testConnection()
     {
         try {
@@ -119,6 +115,9 @@ class MikrotikService
         }
     }
 
+    /**
+     * إنشاء مستخدم PPPoE جديد (السرعة محددة في الـ Profile على المايكروتيك)
+     */
     public function createPppoeUser($username, $password, $profile, $agent)
     {
         $this->connect(
@@ -128,117 +127,68 @@ class MikrotikService
             $agent->mikrotik_port
         );
 
-        return $this->execCommand('/ppp/secret/add', [
+        // إنشاء المستخدم في PPPoE فقط (السرعة ستأتي من الـ Profile)
+        $result = $this->execCommand('/ppp/secret/add', [
             'name' => $username,
             'password' => $password,
             'service' => 'pppoe',
             'profile' => $profile,
         ]);
+
+        if (in_array('!trap', $result)) {
+            $errorMsg = '';
+            foreach ($result as $word) {
+                if (strpos($word, '=message=') === 0) {
+                    $errorMsg = substr($word, 9);
+                    break;
+                }
+            }
+            throw new \Exception($errorMsg);
+        }
+
+        return ['success' => true];
     }
 
     public function disablePppoeUser($username, $agent)
     {
-        $this->connect(
-            $agent->mikrotik_host,
-            $agent->mikrotik_user,
-            $agent->mikrotik_pass,
-            $agent->mikrotik_port
-        );
-
-        return $this->execCommand('/ppp/secret/set', [
-            '.id' => $username,
-            'disabled' => 'yes',
-        ]);
+        $this->connect($agent->mikrotik_host, $agent->mikrotik_user, $agent->mikrotik_pass, $agent->mikrotik_port);
+        return $this->execCommand('/ppp/secret/set', ['.id' => $username, 'disabled' => 'yes']);
     }
 
     public function enablePppoeUser($username, $agent)
     {
-        $this->connect(
-            $agent->mikrotik_host,
-            $agent->mikrotik_user,
-            $agent->mikrotik_pass,
-            $agent->mikrotik_port
-        );
-
-        return $this->execCommand('/ppp/secret/set', [
-            '.id' => $username,
-            'disabled' => 'no',
-        ]);
+        $this->connect($agent->mikrotik_host, $agent->mikrotik_user, $agent->mikrotik_pass, $agent->mikrotik_port);
+        return $this->execCommand('/ppp/secret/set', ['.id' => $username, 'disabled' => 'no']);
     }
 
     public function deletePppoeUser($username, $agent)
     {
-        $this->connect(
-            $agent->mikrotik_host,
-            $agent->mikrotik_user,
-            $agent->mikrotik_pass,
-            $agent->mikrotik_port
-        );
-
-        return $this->execCommand('/ppp/secret/remove', [
-            '.id' => $username,
-        ]);
+        $this->connect($agent->mikrotik_host, $agent->mikrotik_user, $agent->mikrotik_pass, $agent->mikrotik_port);
+        return $this->execCommand('/ppp/secret/remove', ['.id' => $username]);
     }
 
     public function changePppoePassword($username, $newPassword, $agent)
     {
-        $this->connect(
-            $agent->mikrotik_host,
-            $agent->mikrotik_user,
-            $agent->mikrotik_pass,
-            $agent->mikrotik_port
-        );
-
-        return $this->execCommand('/ppp/secret/set', [
-            '.id' => $username,
-            'password' => $newPassword,
-        ]);
+        $this->connect($agent->mikrotik_host, $agent->mikrotik_user, $agent->mikrotik_pass, $agent->mikrotik_port);
+        return $this->execCommand('/ppp/secret/set', ['.id' => $username, 'password' => $newPassword]);
     }
 
     public function changePppoeProfile($username, $profile, $agent)
     {
-        $this->connect(
-            $agent->mikrotik_host,
-            $agent->mikrotik_user,
-            $agent->mikrotik_pass,
-            $agent->mikrotik_port
-        );
-
-        return $this->execCommand('/ppp/secret/set', [
-            '.id' => $username,
-            'profile' => $profile,
-        ]);
+        $this->connect($agent->mikrotik_host, $agent->mikrotik_user, $agent->mikrotik_pass, $agent->mikrotik_port);
+        return $this->execCommand('/ppp/secret/set', ['.id' => $username, 'profile' => $profile]);
     }
 
     public function getActiveUsers($agent)
     {
-        $this->connect(
-            $agent->mikrotik_host,
-            $agent->mikrotik_user,
-            $agent->mikrotik_pass,
-            $agent->mikrotik_port
-        );
-
+        $this->connect($agent->mikrotik_host, $agent->mikrotik_user, $agent->mikrotik_pass, $agent->mikrotik_port);
         return $this->execCommand('/ppp/active/print');
     }
 
-    /**
-     * الحصول على عنوان IP الخاص بمشترك معين (إذا كان متصلاً)
-     */
     public function getClientIP($username, $agent)
     {
-        // الاتصال بالمايكروتيك الخاص بالوكيل
-        $this->connect(
-            $agent->mikrotik_host,
-            $agent->mikrotik_user,
-            $agent->mikrotik_pass,
-            $agent->mikrotik_port
-        );
-
-        // جلب قائمة المتصلين
+        $this->connect($agent->mikrotik_host, $agent->mikrotik_user, $agent->mikrotik_pass, $agent->mikrotik_port);
         $response = $this->execCommand('/ppp/active/print');
-
-        // البحث عن المستخدم في القائمة
         $ip = null;
         $currentUser = null;
 
@@ -252,6 +202,6 @@ class MikrotikService
             }
         }
 
-        return $ip; // إذا كان null فهذا يعني أنه غير متصل
+        return $ip;
     }
 }

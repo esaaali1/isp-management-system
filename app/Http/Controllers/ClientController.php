@@ -27,56 +27,43 @@ class ClientController extends Controller
         return view('agent-clients-expired', compact('clients', 'agent'));
     }
 
+    /**
+     * إضافة مشترك جديد (مع حفظ في قاعدة البيانات بشكل مضمون)
+     */
     public function store(Request $request, MikrotikService $mikrotik)
     {
-        Log::info('بيانات الإضافة:', $request->all());
+        // 1. التحقق من صحة البيانات
+        $validated = $request->validate([
+            'agent_id' => 'required|exists:agents,id',
+            'fullname' => 'required|string|max:255',
+            'username' => 'required|string|max:255|unique:clients',
+            'password' => 'required|string|min:4',
+            'package' => 'required|in:Economy,Standard,Business',
+        ]);
 
+        // 2. جلب بيانات الوكيل
+        $agent = Agent::findOrFail($request->agent_id);
+
+        // 3. التأكد من أن الوكيل لديه بيانات مايكروتيك
+        if (empty($agent->mikrotik_host) || empty($agent->mikrotik_user) || empty($agent->mikrotik_pass)) {
+            return redirect()->back()->with('error', 'هذا الوكيل ليس لديه بيانات مايكروتيك مكتملة.')->withInput();
+        }
+
+        // 4. إنشاء المستخدم في المايكروتيك
         try {
-            $validated = $request->validate([
-                'agent_id' => 'required|exists:agents,id',
-                'fullname' => 'required|string|max:255',
-                'username' => 'required|string|max:255|unique:clients',
-                'password' => 'required|string|min:4',
-                'package' => 'required|in:Economy,Standard,Business',
-            ]);
+            $mikrotik->createPppoeUser(
+                $request->username,
+                $request->password,
+                $request->package,
+                $agent
+            );
+        } catch (\Exception $e) {
+            Log::error('خطأ في المايكروتيك:', ['message' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'فشل إنشاء المستخدم في المايكروتيك: ' . $e->getMessage())->withInput();
+        }
 
-            // جلب بيانات الوكيل
-            $agent = Agent::findOrFail($request->agent_id);
-            
-            // التأكد من أن الوكيل لديه بيانات مايكروتيك
-            if (empty($agent->mikrotik_host) || empty($agent->mikrotik_user) || empty($agent->mikrotik_pass)) {
-                return redirect()->back()->with('error', 'هذا الوكيل ليس لديه بيانات مايكروتيك مكتملة.')->withInput();
-            }
-
-            Log::info('تم التحقق بنجاح');
-
-            // إنشاء المستخدم في مايكروتيك الوكيل
-            try {
-                $result = $mikrotik->createPppoeUser(
-                    $request->username,
-                    $request->password,
-                    $request->package,
-                    $agent  // تمرير بيانات الوكيل
-                );
-                
-                Log::info('نتيجة المايكروتيك:', $result);
-
-                if (in_array('!trap', $result)) {
-                    $errorMsg = '';
-                    foreach ($result as $word) {
-                        if (strpos($word, '=message=') === 0) {
-                            $errorMsg = substr($word, 9);
-                            break;
-                        }
-                    }
-                    return redirect()->back()->with('error', 'فشل إنشاء المستخدم في المايكروتيك: ' . $errorMsg)->withInput();
-                }
-            } catch (\Exception $e) {
-                Log::error('خطأ في المايكروتيك:', ['message' => $e->getMessage()]);
-                return redirect()->back()->with('error', 'خطأ في الاتصال بالمايكروتيك: ' . $e->getMessage())->withInput();
-            }
-
-            // حفظ المشترك في قاعدة البيانات
+        // 5. حفظ المشترك في قاعدة البيانات (الجزء الأهم)
+        try {
             $client = Client::create([
                 'agent_id' => $request->agent_id,
                 'fullname' => $request->fullname,
@@ -87,17 +74,14 @@ class ClientController extends Controller
                 'end_date' => Carbon::now()->addDays(30)->toDateString(),
             ]);
 
-            Log::info('تم حفظ المشترك في قاعدة البيانات:', ['id' => $client->id]);
+            Log::info('تم حفظ المشترك في قاعدة البيانات:', ['id' => $client->id, 'username' => $client->username]);
 
-            return redirect()->back()->with('success', 'تم إضافة المشترك بنجاح على المايكروتيك وقاعدة البيانات');
-
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            Log::error('فشل التحقق:', $e->errors());
-            return redirect()->back()->withErrors($e->validator)->withInput();
         } catch (\Exception $e) {
-            Log::error('خطأ غير متوقع:', ['message' => $e->getMessage()]);
-            return redirect()->back()->with('error', 'حدث خطأ غير متوقع: ' . $e->getMessage())->withInput();
+            Log::error('فشل حفظ المشترك في قاعدة البيانات:', ['message' => $e->getMessage()]);
+            return redirect()->back()->with('error', 'فشل حفظ المشترك في قاعدة البيانات: ' . $e->getMessage())->withInput();
         }
+
+        return redirect()->back()->with('success', 'تم إضافة المشترك بنجاح على المايكروتيك وقاعدة البيانات');
     }
 
     public function show($id, MikrotikService $mikrotik)
@@ -119,10 +103,11 @@ class ClientController extends Controller
     public function update(Request $request, $id, MikrotikService $mikrotik)
     {
         $client = Client::findOrFail($id);
+        $agent = Agent::findOrFail($client->agent_id);
         
         if ($request->has('password') && $request->password != $client->password) {
             try {
-                $mikrotik->changePppoePassword($client->username, $request->password, $client->agent);
+                $mikrotik->changePppoePassword($client->username, $request->password, $agent);
             } catch (\Exception $e) {
                 return redirect()->back()->with('error', 'فشل تغيير كلمة المرور في المايكروتيك');
             }
@@ -130,7 +115,7 @@ class ClientController extends Controller
         
         if ($request->has('package') && $request->package != $client->package) {
             try {
-                $mikrotik->changePppoeProfile($client->username, $request->package, $client->agent);
+                $mikrotik->changePppoeProfile($client->username, $request->package, $agent);
             } catch (\Exception $e) {
                 return redirect()->back()->with('error', 'فشل تغيير الباقة في المايكروتيك');
             }
@@ -176,4 +161,41 @@ class ClientController extends Controller
         
         return redirect()->back()->with('success', 'تم تجديد الاشتراك 30 يوماً');
     }
+    /**
+ * عرض المشتركين النشطين (لم تنتهِ اشتراكاتهم)
+ */
+public function active($agentId)
+{
+    $agent = Agent::findOrFail($agentId);
+    $clients = Client::where('agent_id', $agentId)
+                     ->where('end_date', '>=', Carbon::now())
+                     ->get();
+    return view('agent-clients-active', compact('clients', 'agent'));
+}
+
+/**
+ * عرض المشتركين المتصلين حالياً (من المايكروتيك)
+ */
+public function online($agentId, MikrotikService $mikrotik)
+{
+    $agent = Agent::findOrFail($agentId);
+    $onlineUsernames = [];
+    
+    try {
+        $activeUsers = $mikrotik->getActiveUsers($agent);
+        foreach ($activeUsers as $word) {
+            if (strpos($word, '=name=') === 0) {
+                $onlineUsernames[] = substr($word, 6);
+            }
+        }
+    } catch (\Exception $e) {
+        // إذا فشل الاتصال بالمايكروتيك، نترك القائمة فارغة
+    }
+
+    $clients = Client::where('agent_id', $agentId)
+                     ->whereIn('username', $onlineUsernames)
+                     ->get();
+    
+    return view('agent-clients-online', compact('clients', 'agent'));
+}
 }

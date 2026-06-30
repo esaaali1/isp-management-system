@@ -79,7 +79,8 @@ class AgentController extends Controller
         
         $online = 0;
         try {
-            $activeUsers = $mikrotik->getActiveUsers();
+            // ✅ تمرير $agent إلى getActiveUsers
+            $activeUsers = $mikrotik->getActiveUsers($agent);
             $clientUsernames = Client::where('agent_id', $id)->pluck('username')->toArray();
             foreach ($activeUsers as $word) {
                 if (strpos($word, '=name=') === 0) {

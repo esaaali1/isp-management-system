@@ -175,6 +175,7 @@
             
             <form action="{{ route('clients.store') }}" method="POST">
                 @csrf
+                <!-- ✅ التعديل: استخدام $agent->id ديناميكياً -->
                 <input type="hidden" name="agent_id" value="{{ $agent->id ?? '' }}">
                 
                 <div class="space-y-3">

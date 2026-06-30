@@ -54,7 +54,9 @@ Route::get('/agent/client/{id}', [ClientController::class, 'show'])->name('clien
 Route::put('/agent/client/{id}', [ClientController::class, 'update'])->name('clients.update');
 Route::get('/agent/client/{id}/renew', [ClientController::class, 'renew'])->name('clients.renew');
 Route::delete('/agent/client/{id}', [ClientController::class, 'destroy'])->name('clients.destroy');
-
+// صفحات المشتركين (لوحة الوكيل)
+Route::get('/agent/clients/active/{agentId}', [ClientController::class, 'active'])->name('clients.active');
+Route::get('/agent/clients/online/{agentId}', [ClientController::class, 'online'])->name('clients.online');
 // Routes الاختبار
 Route::get('/test-mikrotik', function () {
     $mikrotik = new \App\Services\MikrotikService();
